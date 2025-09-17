@@ -12,12 +12,16 @@ export default function SignUpForm() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
+    
     try {
       await signUp(email, password, fullName);
       toast({
@@ -26,8 +30,35 @@ export default function SignUpForm() {
         duration: 5000,
       });
       navigate("/login");
-    } catch (error) {
-      setError("Error creating account");
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      
+      // Show specific error messages
+      let errorMessage = "Error creating account";
+      
+      if (error.message) {
+        if (error.message.includes("User already registered")) {
+          errorMessage = "An account with this email already exists. Please try logging in instead.";
+        } else if (error.message.includes("Password should be at least")) {
+          errorMessage = "Password must be at least 6 characters long.";
+        } else if (error.message.includes("Invalid email")) {
+          errorMessage = "Please enter a valid email address.";
+        } else if (error.message.includes("signup is disabled")) {
+          errorMessage = "Account registration is currently disabled. Please contact support.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      setError(errorMessage);
+      toast({
+        title: "Error creating account",
+        description: errorMessage,
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -43,6 +74,7 @@ export default function SignUpForm() {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               required
+              disabled={loading}
               className="h-12 rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -55,6 +87,7 @@ export default function SignUpForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              disabled={loading}
               className="h-12 rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -67,19 +100,25 @@ export default function SignUpForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              disabled={loading}
+              minLength={6}
               className="h-12 rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
             />
-            <p className="text-xs text-gray-500 mt-1">Password must be at least 8 characters</p>
+            <p className="text-xs text-gray-500 mt-1">Password must be at least 6 characters</p>
           </div>
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
           
           <Button 
             type="submit" 
-            className="w-full h-12 rounded-full bg-black text-white hover:bg-gray-800 text-sm font-medium"
+            disabled={loading}
+            className="w-full h-12 rounded-full bg-black text-white hover:bg-gray-800 text-sm font-medium disabled:opacity-50"
           >
-            Create account
+            {loading ? "Creating account..." : "Create account"}
           </Button>
-          
           
           <div className="text-xs text-center text-gray-500 mt-6">
             By creating an account, you agree to our{" "}
