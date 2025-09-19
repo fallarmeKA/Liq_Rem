@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuth } from "../../../supabase/auth";
+import { useAuth } from "../../../supabase/auth"; // make sure this path is correct
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,42 +21,46 @@ export default function SignUpForm() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    
+
     try {
-      await signUp(email, password, fullName);
-      toast({
-        title: "Account created successfully",
-        description: "Please check your email to verify your account.",
-        duration: 5000,
-      });
-      navigate("/login");
-    } catch (error: any) {
-      console.error("Signup error:", error);
-      
-      // Show specific error messages
-      let errorMessage = "Error creating account";
-      
-      if (error.message) {
-        if (error.message.includes("User already registered")) {
-          errorMessage = "An account with this email already exists. Please try logging in instead.";
-        } else if (error.message.includes("Password should be at least")) {
-          errorMessage = "Password must be at least 6 characters long.";
-        } else if (error.message.includes("Invalid email")) {
-          errorMessage = "Please enter a valid email address.";
-        } else if (error.message.includes("signup is disabled")) {
-          errorMessage = "Account registration is currently disabled. Please contact support.";
-        } else {
-          errorMessage = error.message;
-        }
+      if (password.length < 6) {
+        throw new Error("Password must be at least 6 characters long");
       }
-      
-      setError(errorMessage);
-      toast({
-        title: "Error creating account",
-        description: errorMessage,
-        variant: "destructive",
-        duration: 5000,
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new Error("Please enter a valid email address");
+      }
+
+      if (!fullName.trim()) {
+        throw new Error("Full name is required");
+      }
+
+      console.log("Attempting to sign up with:", { email, fullName });
+
+      const { data, error: signUpError } = await signUp({
+        email,
+        password,
+        fullName: fullName.trim(),
       });
+
+      if (signUpError) {
+        console.error("Signup error:", signUpError);
+        setError(signUpError.message);
+        return;
+      }
+
+      console.log("Signup successful:", data);
+
+      toast({
+        title: "Account created",
+        description: "Please check your email to confirm your account.",
+      });
+
+      navigate("/login");
+    } catch (err: any) {
+      console.error("Signup error:", err);
+      setError(err.message || "An unexpected error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -67,7 +71,7 @@ export default function SignUpForm() {
       <div className="bg-white rounded-2xl shadow-sm p-8 w-full max-w-md mx-auto">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="fullName" className="text-sm font-medium text-gray-700">Full Name</Label>
+            <Label htmlFor="fullName">Full Name</Label>
             <Input
               id="fullName"
               placeholder="John Doe"
@@ -75,11 +79,10 @@ export default function SignUpForm() {
               onChange={(e) => setFullName(e.target.value)}
               required
               disabled={loading}
-              className="h-12 rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email</Label>
+            <Label htmlFor="email">Email</Label>
             <Input
               id="email"
               type="email"
@@ -88,11 +91,10 @@ export default function SignUpForm() {
               onChange={(e) => setEmail(e.target.value)}
               required
               disabled={loading}
-              className="h-12 rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-sm font-medium text-gray-700">Password</Label>
+            <Label htmlFor="password">Password</Label>
             <Input
               id="password"
               type="password"
@@ -102,24 +104,26 @@ export default function SignUpForm() {
               required
               disabled={loading}
               minLength={6}
-              className="h-12 rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
             />
-            <p className="text-xs text-gray-500 mt-1">Password must be at least 6 characters</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Password must be at least 6 characters
+            </p>
           </div>
+
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
               <p className="text-sm text-red-600">{error}</p>
             </div>
           )}
-          
-          <Button 
-            type="submit" 
+
+          <Button
+            type="submit"
             disabled={loading}
             className="w-full h-12 rounded-full bg-black text-white hover:bg-gray-800 text-sm font-medium disabled:opacity-50"
           >
             {loading ? "Creating account..." : "Create account"}
           </Button>
-          
+
           <div className="text-xs text-center text-gray-500 mt-6">
             By creating an account, you agree to our{" "}
             <Link to="/" className="text-blue-600 hover:underline">
@@ -130,7 +134,7 @@ export default function SignUpForm() {
               Privacy Policy
             </Link>
           </div>
-          
+
           <div className="text-sm text-center text-gray-600 mt-6">
             Already have an account?{" "}
             <Link to="/login" className="text-blue-600 hover:underline font-medium">
